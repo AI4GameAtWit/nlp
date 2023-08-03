@@ -90,3 +90,54 @@ public class GameController4 : MonoBehaviour
         }
     }
 }
+
+ private IEnumerator AnalyzeText(string text)
+    {
+        string apiKey = "Your-API-Key";
+        string url = "https://language.googleapis.com/v1beta2/documents:analyzeSentiment?key=" + apiKey;
+        var httpRequest = new UnityWebRequest(url, "POST");
+        httpRequest.SetRequestHeader("Content-Type", "application/json");
+        var jsonData = new RequestJsonData
+        {
+            document = new Document
+            {
+                type = "PLAIN_TEXT",
+                content = text
+            },
+            encodingType = "UTF8"
+        };
+
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(JsonUtility.ToJson(jsonData));
+        httpRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        httpRequest.downloadHandler = new DownloadHandlerBuffer();
+        yield return httpRequest.SendWebRequest();
+
+        if (httpRequest.result == UnityWebRequest.Result.Success)
+        {
+            var N = JSON.Parse(httpRequest.downloadHandler.text);
+            var action = N["documentSentiment"]["magnitude"].AsFloat >= 0.25f ? "Attack" : "Run";
+            npc.ProcessCommand(action);
+            npcResponseText.text = npc.response;
+        }
+        else
+        {
+            Debug.Log("Error: " + httpRequest.error);
+        }
+
+        httpRequest.Dispose();  // Dispose the UnityWebRequest object
+    }
+
+  
+[System.Serializable]
+public class RequestJsonData
+{
+    public Document document;
+    public string encodingType;
+}
+
+[System.Serializable]
+public class Document
+{
+    public string type;
+    public string content;
+}
